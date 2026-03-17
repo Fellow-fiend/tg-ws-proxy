@@ -1,0 +1,109 @@
+name: Build Apple apps + deploy Pages
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build-ios-and-macos:
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-ios.txt
+          pip install pyinstaller
+
+      - name: Prepare iOS app sources
+        run: |
+          rm -rf ios_app
+          mkdir -p ios_app/proxy
+          cp ios.py ios_app/main.py
+          cp proxy/tg_ws_proxy.py ios_app/proxy/tg_ws_proxy.py
+          touch ios_app/proxy/__init__.py
+
+      - name: Build iPhone app bundle (unsigned)
+        run: |
+          toolchain build python3 kivy cryptography
+          toolchain create tgwsproxy ios_app
+          xcodebuild \
+            -project tgwsproxy-ios/tgwsproxy.xcodeproj \
+            -scheme tgwsproxy \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build/DerivedData-iPhone \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Build macOS .app (PyInstaller)
+        run: |
+          rm -rf build dist
+          pyinstaller --noconfirm --windowed --name tgwsproxy-macos ios.py
+
+      - name: Package artifacts
+        run: |
+          mkdir -p dist
+
+          IPHONE_APP=$(find build/DerivedData-iPhone -name 'tgwsproxy.app' | head -n 1)
+
+          if [ -z "$IPHONE_APP" ]; then
+            echo "Cannot find iPhone tgwsproxy.app"
+            exit 1
+          fi
+
+          if [ ! -d "dist/tgwsproxy-macos.app" ]; then
+            echo "Cannot find macOS app in dist/tgwsproxy-macos.app"
+            exit 1
+          fi
+
+          ditto -c -k --sequesterRsrc --keepParent "$IPHONE_APP" dist/tg-ws-proxy-iphone-app-unsigned.zip
+          ditto -c -k --sequesterRsrc --keepParent "dist/tgwsproxy-macos.app" dist/tg-ws-proxy-macos-app.zip
+
+      - name: Upload iPhone artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tg-ws-proxy-iphone-app-unsigned
+          path: dist/tg-ws-proxy-iphone-app-unsigned.zip
+
+      - name: Upload macOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tg-ws-proxy-macos-app
+          path: dist/tg-ws-proxy-macos-app.zip
+
+      - name: Prepare Pages content
+        run: |
+          mkdir -p _site
+          cp .github/pages/index.html _site/index.html
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy-pages:
+    needs: build-ios-and-macos
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
