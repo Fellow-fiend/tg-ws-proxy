@@ -27,12 +27,14 @@ jobs:
         with:
           python-version: '3.11'
 
-
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
 
       - name: Install system dependencies
         run: |
@@ -40,7 +42,15 @@ jobs:
           sudo apt-get install -y \
             git zip unzip autoconf libtool pkg-config \
             zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 \
-            cmake libffi-dev libssl-dev
+            cmake libffi-dev libssl-dev lib32stdc++6 lib32z1
+
+      - name: Install Android packages (build-tools include aidl)
+        run: |
+          yes | sdkmanager --licenses
+          sdkmanager --install \
+            "platform-tools" \
+            "platforms;android-34" \
+            "build-tools;34.0.0"
 
       - name: Install Python build tools
         run: |
@@ -49,7 +59,16 @@ jobs:
           pip install 'setuptools<70'
 
       - name: Build debug APK
+        env:
+          ANDROID_SDK_ROOT: ${{ env.ANDROID_SDK_ROOT }}
         run: |
+          set -euo pipefail
+          BUILD_TOOLS_DIR="${ANDROID_SDK_ROOT}/build-tools/34.0.0"
+          if [[ ! -x "${BUILD_TOOLS_DIR}/aidl" ]]; then
+            echo "aidl binary not found in ${BUILD_TOOLS_DIR}"
+            exit 1
+          fi
+          export PATH="${BUILD_TOOLS_DIR}:${PATH}"
           buildozer android debug
 
       - name: Locate APK
