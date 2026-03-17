@@ -42,6 +42,40 @@ Telegram Desktop → SOCKS5 (127.0.0.1:1080) → TG WS Proxy → WSS (kws*.web.t
 - **Открыть логи** — открыть файл логов
 - **Выход** — остановить прокси и закрыть приложение
 
+
+### Android (native APK, без root)
+Теперь Android-версия делается как **нативное приложение на Python (Kivy)**, без Termux и без root.
+
+- лёгкий GUI (host/port/DC + кнопки Start/Stop/Restart);
+- прокси работает внутри приложения;
+- используются порты > `1024`, поэтому root не нужен;
+- для минимального расхода батареи оставляйте выключенным verbose.
+
+#### Сборка APK
+Требуется Linux/macOS с установленными Docker **или** Android build toolchain для Buildozer.
+
+```bash
+pip install --upgrade pip
+pip install -r requirements-android.txt
+buildozer android debug
+```
+
+После сборки APK лежит в:
+
+```bash
+bin/*.apk
+```
+
+#### Установка APK
+1. Скопируйте `bin/tgwsproxy-0.1.0-arm64-v8a-debug.apk` (имя может отличаться) на телефон.
+2. Разрешите установку из неизвестных источников.
+3. Установите APK и запустите приложение **TG WS Proxy**.
+4. В приложении нажмите **Start**.
+5. В Telegram Android укажите SOCKS5:
+   - Сервер: `127.0.0.1`
+   - Порт: `1080` (или ваш в приложении)
+   - Логин/пароль: пусто
+
 ## Установка из исходников
 
 ```bash
@@ -52,6 +86,12 @@ pip install -r requirements.txt
 
 ```bash
 python windows.py
+```
+
+### Android (локальный запуск UI)
+
+```bash
+python main.py
 ```
 
 ### Консольный режим
@@ -111,9 +151,18 @@ Tray-приложение хранит данные в `%APPDATA%/TgWsProxy`:
 }
 ```
 
+
+### GitHub Actions (автосборка APK + релиз)
+
+Добавлен workflow: `.github/workflows/android-apk-release.yml`.
+
+- При пуше тега `v*` (например `v0.1.0`) GitHub Actions собирает APK через Buildozer.
+- APK автоматически прикрепляется к странице Release этого тега.
+- Также можно запустить workflow вручную через `workflow_dispatch` (с optional `release_tag`).
+
 ## Автоматическая сборка
 
-Проект содержит спецификацию PyInstaller ([`windows.spec`](packaging/windows.spec)) и GitHub Actions workflow ([`.github/workflows/build.yml`](.github/workflows/build.yml)) для автоматической сборки.
+Проект содержит спецификацию PyInstaller ([`windows.spec`](packaging/windows.spec)) для Windows-сборки и workflow для Android APK ([`.github/workflows/android-apk-release.yml`](.github/workflows/android-apk-release.yml)).
 
 ```bash
 pip install pyinstaller
