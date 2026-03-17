@@ -25,7 +25,8 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: '3.11'
+
 
       - name: Set up Java
         uses: actions/setup-java@v4
@@ -45,6 +46,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements-android.txt
+          pip install 'setuptools<70'
 
       - name: Build debug APK
         run: |
