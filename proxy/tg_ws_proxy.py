@@ -66,6 +66,23 @@ _IP_TO_DC: Dict[str, Tuple[int, bool]] = {
     '91.108.56.151': (5, True),
 }
 
+
+def default_dc_ip_map() -> Dict[int, str]:
+    """Return one default IP per known DC (prefers non-media endpoints)."""
+    dc_candidates: Dict[int, list[str]] = {}
+    media_candidates: Dict[int, list[str]] = {}
+
+    for ip, (dc_id, is_media) in _IP_TO_DC.items():
+        target = media_candidates if is_media else dc_candidates
+        target.setdefault(dc_id, []).append(ip)
+
+    dc_opt: Dict[int, str] = {}
+    for dc_id in sorted(set(dc_candidates) | set(media_candidates)):
+        ips = dc_candidates.get(dc_id) or media_candidates.get(dc_id) or []
+        if ips:
+            dc_opt[dc_id] = ips[0]
+    return dc_opt
+
 _dc_opt: Dict[int, Optional[str]] = {}
 
 # DCs where WS is known to fail (302 redirect)
