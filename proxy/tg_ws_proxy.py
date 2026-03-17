@@ -99,18 +99,41 @@ def _make_ssl_context() -> ssl.SSLContext:
     """
     Build a TLS context that works on desktop and Android.
 
-    On some Android/Python-for-Android builds, create_default_context()
-    may fail during app startup because system CA bundles are unavailable.
-    We don't use certificate validation for Telegram WS endpoints here,
-    so construct a minimal client context directly.
+    Some Android/Python/OpenSSL combinations are inconsistent about which
+    protocol constants are present/usable. Build an unverified client context
+    with a conservative fallback chain.
     """
-    ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    protocols = [
+        getattr(ssl, 'PROTOCOL_TLS_CLIENT', None),
+        getattr(ssl, 'PROTOCOL_TLS', None),
+        getattr(ssl, 'PROTOCOL_SSLv23', None),
+    ]
+    for proto in protocols:
+        if proto is None:
+            continue
+        try:
+            ctx = ssl.SSLContext(proto)
+            ctx.check_hostname = False
+            ctx.verify_mode = ssl.CERT_NONE
+            return ctx
+        except Exception:
+            continue
+
+    # Final fallback for unusual SSL module builds.
+    ctx = ssl._create_unverified_context()
     ctx.check_hostname = False
     ctx.verify_mode = ssl.CERT_NONE
     return ctx
 
 
-_ssl_ctx = _make_ssl_context()
+_ssl_ctx: Optional[ssl.SSLContext] = None
+
+
+def _get_ssl_context() -> ssl.SSLContext:
+    global _ssl_ctx
+    if _ssl_ctx is None:
+        _ssl_ctx = _make_ssl_context()
+    return _ssl_ctx
 
 
 def _set_sock_opts(transport):
@@ -183,7 +206,7 @@ class RawWebSocket:
         Raises WsHandshakeError on non-101 response.
         """
         reader, writer = await asyncio.wait_for(
-            asyncio.open_connection(ip, 443, ssl=_ssl_ctx,
+            asyncio.open_connection(ip, 443, ssl=_get_ssl_context(),
                                     server_hostname=domain),
             timeout=min(timeout, 10))
         _set_sock_opts(writer.transport)
