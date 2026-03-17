@@ -61,6 +61,7 @@ jobs:
       - name: Build debug APK
         env:
           ANDROID_SDK_ROOT: ${{ env.ANDROID_SDK_ROOT }}
+          BUILDOZER_ALLOW_SDK_LICENSE: "1"
         run: |
           set -euo pipefail
           BUILD_TOOLS_DIR="${ANDROID_SDK_ROOT}/build-tools/34.0.0"
@@ -69,7 +70,7 @@ jobs:
             exit 1
           fi
           export PATH="${BUILD_TOOLS_DIR}:${PATH}"
-          buildozer android debug
+          yes | buildozer android debug
 
       - name: Locate APK
         id: apk
