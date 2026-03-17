@@ -63,13 +63,6 @@ jobs:
           ANDROID_SDK_ROOT: ${{ env.ANDROID_SDK_ROOT }}
           BUILDOZER_ALLOW_SDK_LICENSE: "1"
         run: |
-          set -euo pipefail
-          BUILD_TOOLS_DIR="${ANDROID_SDK_ROOT}/build-tools/34.0.0"
-          if [[ ! -x "${BUILD_TOOLS_DIR}/aidl" ]]; then
-            echo "aidl binary not found in ${BUILD_TOOLS_DIR}"
-            exit 1
-          fi
-          export PATH="${BUILD_TOOLS_DIR}:${PATH}"
           yes | buildozer android debug
 
       - name: Locate APK
