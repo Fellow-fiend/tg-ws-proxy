@@ -94,6 +94,22 @@ python windows.py
 python main.py
 ```
 
+### iOS (native app via Python/Kivy)
+
+Добавлена iOS-версия на Python с простым легковесным GUI (`ios.py`):
+- поля только для `host` и `port`;
+- кнопки `Start/Stop/Restart`;
+- редактирование DC отключено;
+- автоматически используются **все доступные DC** из встроенной карты.
+
+Локальный запуск интерфейса:
+
+```bash
+python ios.py
+```
+
+Сборка iOS в CI описана ниже (GitHub Actions).
+
 ### Консольный режим
 
 ```bash
@@ -152,13 +168,19 @@ Tray-приложение хранит данные в `%APPDATA%/TgWsProxy`:
 ```
 
 
-### GitHub Actions (автосборка APK + релиз)
+### GitHub Actions
 
-Добавлен workflow: `.github/workflows/android-apk-release.yml`.
+Добавлены workflow:
 
-- При пуше тега `v*` (например `v0.1.0`) GitHub Actions собирает APK через Buildozer.
-- APK автоматически прикрепляется к странице Release этого тега.
-- Также можно запустить workflow вручную через `workflow_dispatch` (с optional `release_tag`).
+- `.github/workflows/android-apk-release.yml` — сборка Android APK.
+- `.github/workflows/ios-pages-release.yml` — сборка Apple-артефактов (iPhone + macOS) и публикация страницы на GitHub Pages.
+
+Для Apple workflow:
+- запускается по тегам `v*` и вручную (`workflow_dispatch`);
+- собирает `tgwsproxy.app` для iPhone (unsigned, требуется подпись для установки на устройство);
+- собирает `tgwsproxy-macos.app` для macOS;
+- публикует артефакты `tg-ws-proxy-iphone-app-unsigned`, `tg-ws-proxy-macos-app`;
+- выкладывает страницу в GitHub Pages (`.github/pages/index.html`).
 
 ## Автоматическая сборка
 
