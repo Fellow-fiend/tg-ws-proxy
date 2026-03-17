@@ -78,9 +78,22 @@ _dc_fail_until: Dict[Tuple[int, bool], float] = {}
 _DC_FAIL_COOLDOWN = 60.0  # seconds
 
 
-_ssl_ctx = ssl.create_default_context()
-_ssl_ctx.check_hostname = False
-_ssl_ctx.verify_mode = ssl.CERT_NONE
+def _make_ssl_context() -> ssl.SSLContext:
+    """
+    Build a TLS context that works on desktop and Android.
+
+    On some Android/Python-for-Android builds, create_default_context()
+    may fail during app startup because system CA bundles are unavailable.
+    We don't use certificate validation for Telegram WS endpoints here,
+    so construct a minimal client context directly.
+    """
+    ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+    return ctx
+
+
+_ssl_ctx = _make_ssl_context()
 
 
 def _set_sock_opts(transport):
